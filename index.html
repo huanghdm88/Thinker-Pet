@@ -1,0 +1,1370 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Thinker Pet — AI 角色与状态浏览</title>
+  <link rel="icon" href="ThinkerPet.svg" type="image/svg+xml" />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&display=swap" rel="stylesheet">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Noto Sans SC', sans-serif;
+      background: #0f0f12;
+      color: #e4e4e7;
+      min-height: 100vh;
+      padding: 24px;
+    }
+    h1 {
+      font-size: 1.5rem;
+      font-weight: 700;
+      margin-bottom: 8px;
+      color: #fff;
+    }
+    .subtitle {
+      font-size: 0.875rem;
+      color: #71717a;
+      margin-bottom: 24px;
+    }
+    .gallery {
+      max-width: 560px;
+      margin: 0 auto;
+    }
+    .gallery-row {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+    .gallery-row.action-row { margin-top: 24px; }
+    .action-buttons {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 8px;
+      margin-top: 24px;
+    }
+    .action-btn {
+      padding: 8px 14px;
+      border-radius: 8px;
+      border: 1px solid #3f3f46;
+      background: #18181b;
+      color: #a1a1aa;
+      font-size: 0.85rem;
+      font-family: inherit;
+      cursor: pointer;
+      transition: background 0.15s, border-color 0.15s, color 0.15s;
+    }
+    .action-btn:hover {
+      background: #27272a;
+      color: #e4e4e7;
+      border-color: #52525b;
+    }
+    .action-btn.active {
+      background: #6366f1;
+      border-color: #6366f1;
+      color: #fff;
+    }
+    .nav-btn {
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      border: 1px solid #3f3f46;
+      background: #18181b;
+      color: #e4e4e7;
+      cursor: pointer;
+      font-size: 1.25rem;
+      line-height: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      transition: background 0.15s, border-color 0.15s, transform 0.1s;
+    }
+    .nav-btn:hover {
+      background: #27272a;
+      border-color: #6366f1;
+      transform: scale(1.05);
+    }
+    .nav-btn:active { transform: scale(0.95); }
+    .gallery-label {
+      min-width: 140px;
+      text-align: center;
+      font-size: 1rem;
+      font-weight: 500;
+      color: #fff;
+    }
+    .gallery-label .muted { font-size: 0.8rem; color: #71717a; font-weight: 400; }
+    .viewer-canvas-wrap {
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 180px;
+      background: #18181b;
+      border: 1px solid #27272a;
+      border-radius: 16px;
+      padding: 24px;
+    }
+    .evolve-btn {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      z-index: 10;
+      padding: 6px 12px;
+      border-radius: 8px;
+      border: 1px solid #6366f1;
+      background: #18181b;
+      color: #a5b4fc;
+      font-size: 0.8rem;
+      font-family: inherit;
+      cursor: pointer;
+      transition: background 0.2s, color 0.2s, border-color 0.2s;
+    }
+    .evolve-btn:hover {
+      background: #27272a;
+      color: #c7d2fe;
+      border-color: #818cf8;
+    }
+    .evolve-btn.evolved {
+      background: #6366f1;
+      color: #fff;
+      border-color: #818cf8;
+    }
+    .viewer-canvas-wrap canvas {
+      display: block;
+      max-width: 100%;
+      width: 384px;   /* 300% 原宽度 128*3 */
+      height: 170px;
+      image-rendering: pixelated;
+      image-rendering: crisp-edges;
+      background: #1c1c1e;
+    }
+    .char-meta {
+      text-align: center;
+      margin-top: 12px;
+      font-size: 0.9rem;
+      color: #a1a1aa;
+    }
+    .char-meta span {
+      display: inline-block;
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      vertical-align: middle;
+      margin-right: 6px;
+    }
+    .top-right-bar {
+      position: fixed;
+      top: 16px;
+      right: 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      z-index: 100;
+    }
+    .integration-trigger {
+      padding: 6px 12px;
+      border: 1px solid #3f3f46;
+      border-radius: 8px;
+      background: #18181b;
+      color: #a1a1aa;
+      font-size: 0.8rem;
+      font-family: inherit;
+      cursor: pointer;
+      transition: background 0.15s, color 0.15s, border-color 0.15s;
+    }
+    .integration-trigger:hover { background: #27272a; color: #a5b4fc; border-color: #52525b; }
+    .lang-toggle {
+      display: flex;
+      gap: 0;
+      border-radius: 8px;
+      overflow: hidden;
+      border: 1px solid #3f3f46;
+      background: #18181b;
+    }
+    .lang-toggle button {
+      padding: 6px 12px;
+      border: none;
+      background: transparent;
+      color: #a1a1aa;
+      font-size: 0.8rem;
+      font-family: inherit;
+      cursor: pointer;
+      transition: background 0.15s, color 0.15s;
+    }
+    .lang-toggle button:hover { background: #27272a; color: #e4e4e7; }
+    .lang-toggle button.active { background: #6366f1; color: #fff; }
+    .integration-modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.7);
+      z-index: 200;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      box-sizing: border-box;
+    }
+    .integration-modal-overlay.visible { display: flex; }
+    .integration-modal-box {
+      background: #18181b;
+      border: 1px solid #3f3f46;
+      border-radius: 16px;
+      max-width: 720px;
+      max-height: 85vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .integration-modal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 18px;
+      border-bottom: 1px solid #27272a;
+      flex-shrink: 0;
+    }
+    .integration-modal-title { font-size: 1rem; font-weight: 600; color: #fff; }
+    .integration-modal-close {
+      padding: 6px 12px;
+      border: 1px solid #3f3f46;
+      border-radius: 8px;
+      background: transparent;
+      color: #a1a1aa;
+      font-size: 0.8rem;
+      font-family: inherit;
+      cursor: pointer;
+      transition: background 0.15s, color 0.15s;
+    }
+    .integration-modal-close:hover { background: #27272a; color: #e4e4e7; }
+    .integration-modal-body {
+      padding: 20px 24px;
+      overflow: auto;
+      font-size: 0.875rem;
+      line-height: 1.65;
+      color: #a1a1aa;
+    }
+    .integration-modal-body .md-content { max-width: 100%; }
+    .integration-modal-body .md-content h1 { font-size: 1.35rem; margin: 0 0 16px; padding-bottom: 8px; color: #fff; font-weight: 700; border-bottom: 1px solid #3f3f46; }
+    .integration-modal-body .md-content h2 { font-size: 1.15rem; margin: 24px 0 12px; color: #e4e4e7; font-weight: 600; }
+    .integration-modal-body .md-content h3 { font-size: 1.05rem; margin: 18px 0 10px; color: #d4d4d8; font-weight: 600; }
+    .integration-modal-body .md-content h4, .integration-modal-body .md-content h5, .integration-modal-body .md-content h6 { font-size: 0.95rem; margin: 14px 0 8px; color: #d4d4d8; font-weight: 600; }
+    .integration-modal-body .md-content p { margin: 0 0 12px; color: #a1a1aa; }
+    .integration-modal-body .md-content ul { margin: 0 0 12px; padding-left: 1.5em; list-style: disc; }
+    .integration-modal-body .md-content ol { margin: 0 0 12px; padding-left: 1.5em; list-style: decimal; }
+    .integration-modal-body .md-content li { margin: 4px 0; }
+    .integration-modal-body .md-content li > ul, .integration-modal-body .md-content li > ol { margin: 4px 0; padding-left: 1.2em; }
+    .integration-modal-body .md-content table { width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 0.8rem; display: block; overflow-x: auto; }
+    .integration-modal-body .md-content th, .integration-modal-body .md-content td { border: 1px solid #3f3f46; padding: 10px 12px; text-align: left; color: #e4e4e7; word-break: break-word; }
+    .integration-modal-body .md-content th { background: #27272a; color: #fff; font-weight: 600; }
+    .integration-modal-body .md-content tr:nth-child(even) { background: rgba(39, 39, 42, 0.5); }
+    .integration-modal-body .md-content code { background: #27272a; padding: 2px 6px; border-radius: 4px; color: #a5b4fc; font-size: 0.88em; font-family: ui-monospace, monospace; }
+    .integration-modal-body .md-content pre { background: #27272a; padding: 14px 16px; border-radius: 8px; overflow-x: auto; margin: 12px 0; border: 1px solid #3f3f46; }
+    .integration-modal-body .md-content pre code { background: none; padding: 0; color: #e4e4e7; font-size: 0.85rem; line-height: 1.5; }
+    .integration-modal-body .md-content hr { border: none; border-top: 1px solid #3f3f46; margin: 20px 0; }
+    .integration-modal-body .md-content strong { color: #e4e4e7; font-weight: 600; }
+    .integration-modal-body .md-content em { color: #d4d4d8; font-style: italic; }
+    .integration-modal-body .md-content a { color: #a5b4fc; text-decoration: none; }
+    .integration-modal-body .md-content a:hover { text-decoration: underline; }
+    .integration-modal-body .md-content blockquote { margin: 12px 0; padding: 8px 0 8px 14px; border-left: 4px solid #6366f1; background: rgba(99, 102, 241, 0.08); color: #a1a1aa; border-radius: 0 6px 6px 0; }
+
+    /* 嵌入模式：仅显示角色画布，无标题/副标题/切换角色/查看文档 */
+    html.embed-mode, body.embed-mode { height: 100%; margin: 0; padding: 0; min-height: 0; }
+    body.embed-mode .top-right-bar,
+    body.embed-mode h1,
+    body.embed-mode .subtitle,
+    body.embed-mode #integration-modal,
+    body.embed-mode .gallery-row,
+    body.embed-mode .action-buttons,
+    body.embed-mode .char-meta,
+    body.embed-mode .evolve-btn { display: none !important; }
+    body.embed-mode .gallery { max-width: none; margin: 0; }
+    /* 嵌入画布：高度 100% 填满容器（20vh），宽度按比例；仅调页面宽度时容器高度不变，仅调高度时整体按 20% 缩放，角色比例与高度占比不变 */
+    body.embed-mode .viewer-canvas-wrap {
+      position: relative;
+      min-height: 0;
+      height: 100%;
+      width: auto;
+      max-width: 100%;
+      padding: 0;
+      border: none;
+      border-radius: 0;
+      background: #1c1c1e;
+      aspect-ratio: 384 / 170;
+      margin: 0 auto;
+      display: block;
+    }
+    body.embed-mode .viewer-canvas-wrap canvas {
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 100% !important;
+      height: 100% !important;
+      image-rendering: pixelated;
+      image-rendering: crisp-edges;
+    }
+  </style>
+</head>
+<body>
+  <script>(function(){if(/[?&]embed=1/.test(location.search)||window.self!==window.top){document.documentElement.classList.add('embed-mode');document.body.classList.add('embed-mode');}})();</script>
+  <div class="top-right-bar">
+    <button type="button" class="integration-trigger" id="integration-doc-link">查看接入文档</button>
+    <div class="lang-toggle" role="group" aria-label="语言">
+      <button type="button" id="lang-zh" class="active">中文</button>
+      <button type="button" id="lang-en">EN</button>
+    </div>
+  </div>
+  <h1>Thinker Pet</h1>
+  <p class="subtitle" id="page-subtitle">定制化技能，主动洞察用户意图的智能体</p>
+
+  <div id="integration-modal" class="integration-modal-overlay" aria-hidden="true">
+    <div class="integration-modal-box">
+      <div class="integration-modal-header">
+        <span class="integration-modal-title" id="integration-modal-title">接入文档</span>
+        <button type="button" class="integration-modal-close" id="integration-modal-close">关闭</button>
+      </div>
+      <div class="integration-modal-body" id="integration-modal-body">加载中…</div>
+    </div>
+  </div>
+
+  <div class="gallery">
+    <!-- 角色切换：左 | 名称/序号 | 右 -->
+    <div class="gallery-row">
+      <button type="button" class="nav-btn" id="btn-char-prev" aria-label="上一个角色">‹</button>
+      <div class="gallery-label" id="char-label">—</div>
+      <button type="button" class="nav-btn" id="btn-char-next" aria-label="下一个角色">›</button>
+    </div>
+    <!-- 当前角色动画 -->
+    <div class="viewer-canvas-wrap">
+      <button type="button" class="evolve-btn" id="btn-evolve" title="点击进化，再次点击恢复">✦ 进化</button>
+      <canvas id="viewer-canvas"></canvas>
+    </div>
+    <p class="char-meta" id="char-meta"></p>
+    <!-- 动作按钮平铺，点击激活对应动作 -->
+    <div class="action-buttons" id="action-buttons"></div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <script>
+    // === actions.js 内联 ===
+    const ACTIONS = Object.freeze({
+      Idle:         { id: 'idle',         name: '待机',   start: 0,  count: 1,  desc: '空闲等待' },
+      Walk:         { id: 'walk',         name: '行走',   start: 1,  count: 4,  desc: '移动中' },
+      Search:       { id: 'search',       name: '搜索',   start: 5,  count: 3,  desc: '检索/查找' },
+      Process:      { id: 'process',      name: '处理',   start: 8,  count: 3,  desc: '思考/计算' },
+      OutputText:   { id: 'outputText',   name: '输出文字', start: 11, count: 3, desc: '生成文本' },
+      OutputVisual: { id: 'outputVisual', name: '输出视觉', start: 14, count: 3, desc: '生成图像/视觉' },
+      Listen:       { id: 'listen',       name: '聆听',   start: 17, count: 2,  desc: '接收输入' },
+      Wait:         { id: 'wait',         name: '等待',   start: 19, count: 2,  desc: '等待响应' },
+      Error:        { id: 'error',        name: '错误',   start: 21, count: 2,  desc: '出错状态' },
+      Success:      { id: 'success',      name: '成功',   start: 23, count: 2,  desc: '完成/成功' },
+      Dialogue:     { id: 'dialogue',     name: '对话',   start: 17, count: 2,  desc: '头顶对话框' },
+    });
+    const TOTAL_FRAMES = 25;
+    const FRAME_ORDER = ['Idle','Walk','Search','Process','OutputText','OutputVisual','Listen','Wait','Error','Success','Dialogue'];
+    const DIALOGUE_TEXTS = [
+      '算力即权力！！',
+      '有PMF了吗？',
+      '这能对齐吗？',
+      '这是真需求？',
+      '护城河呢？',
+      '推理一下？',
+      '交给我Agent处理一下~',
+      '今天的算力管够吗？',
+      '我的主人还在睡觉'
+    ];
+    const DIALOGUE_TEXTS_EN = [
+      'Compute is power!!',
+      'Got PMF yet?',
+      'Can this align?',
+      'Is this a real need?',
+      'What about moats?',
+      'Reason it out?',
+      'Leave it to my Agent~',
+      'Enough compute today?',
+      'My human is still asleep'
+    ];
+    var ACTION_NAMES_EN = { Idle: 'Idle', Walk: 'Walk', Search: 'Search', Process: 'Process', OutputText: 'Output Text', OutputVisual: 'Output Visual', Listen: 'Listen', Wait: 'Wait', Error: 'Error', Success: 'Success', Dialogue: 'Dialogue' };
+    function getFrameRange(actionId) {
+      const a = Object.values(ACTIONS).find(x => x.id === actionId);
+      return a ? { start: a.start, count: a.count } : null;
+    }
+
+    // === characters.js 内联（仅数据与 getCharacterFrames）===
+    function pad8x8(rows) {
+      const out = [];
+      for (let r = 0; r < 8; r++) {
+        const row = rows[r] || [];
+        out.push([0,0,0,0,0,0,0,0].map((_, i) => row[i] || 0));
+      }
+      return out;
+    }
+    const ROBOT_FRAMES = [
+      [[0,0,1,1,1,1,0,0],[0,0,1,1,1,1,0,0],[0,0,0,1,1,0,0,0],[0,1,1,1,1,1,1,0],[0,0,1,1,1,1,0,0],[0,0,1,1,1,1,0,0],[0,1,1,0,0,0,0,0],[0,1,0,0,0,1,1,0]],
+      [[0,0,1,1,1,1,0,0],[0,0,1,1,1,1,0,0],[0,0,0,1,1,0,0,0],[0,1,1,1,1,1,1,0],[0,0,1,1,1,1,0,0],[0,0,1,1,1,1,0,0],[0,1,1,0,0,0,0,0],[0,1,0,0,0,1,1,0]],
+      [[0,0,1,1,1,1,0,0],[0,0,1,1,1,1,0,0],[0,0,0,1,1,0,0,0],[0,1,1,1,1,1,1,0],[0,0,1,1,1,1,0,0],[0,0,1,1,1,1,0,0],[0,0,1,1,0,1,0,0],[0,0,0,1,1,0,0,0]],
+      [[0,0,1,1,1,1,0,0],[0,0,1,1,1,1,0,0],[0,0,0,1,1,0,0,0],[0,1,1,1,1,1,1,0],[0,0,1,1,1,1,0,0],[0,0,1,1,1,1,0,0],[0,0,0,0,0,1,1,0],[0,1,1,0,0,0,1,0]],
+      [[0,0,1,1,1,1,0,0],[0,0,1,1,1,1,0,0],[0,0,0,1,1,0,0,0],[0,1,1,1,1,1,1,0],[0,0,1,1,1,1,0,0],[0,0,1,1,1,1,0,0],[0,0,1,1,0,1,0,0],[0,0,0,1,1,0,0,0]],
+      [[0,0,1,1,1,1,0,0],[0,0,1,1,1,1,0,0],[1,0,0,1,1,0,0,0],[0,1,1,1,1,1,1,0],[0,0,1,1,1,1,0,0],[0,0,1,1,1,1,0,0],[0,1,1,0,0,0,0,0],[0,1,0,0,0,1,1,0]],
+      [[0,0,1,1,1,1,0,0],[0,0,1,1,1,1,0,0],[0,0,0,1,1,0,0,0],[0,1,1,1,1,1,1,0],[0,0,1,1,1,1,0,0],[0,0,1,1,1,1,0,0],[0,1,1,0,0,0,0,0],[0,1,0,0,0,1,1,0]],
+      [[0,0,1,1,1,1,0,0],[0,0,1,1,1,1,0,0],[0,0,0,1,1,0,0,1],[0,1,1,1,1,1,1,0],[0,0,1,1,1,1,0,0],[0,0,1,1,1,1,0,0],[0,1,1,0,0,0,0,0],[0,1,0,0,0,1,1,0]],
+      [[0,0,1,1,1,1,0,0],[0,1,1,1,1,1,1,0],[0,0,0,1,1,0,0,0],[0,1,1,1,1,1,1,0],[0,0,1,1,1,1,0,0],[0,0,1,1,1,1,0,0],[0,1,1,0,0,0,0,0],[0,1,0,0,0,1,1,0]],
+      [[0,0,1,1,1,1,0,0],[0,0,1,1,1,1,0,0],[0,0,0,1,1,0,0,0],[0,1,1,1,1,1,1,0],[0,0,1,1,1,1,0,0],[0,1,1,1,1,1,0,0],[0,1,1,0,0,0,0,0],[0,1,0,0,0,1,1,0]],
+      [[0,0,1,1,1,1,0,0],[0,1,1,1,1,1,1,0],[0,0,0,1,1,0,0,0],[0,1,1,1,1,1,1,0],[0,0,1,1,1,1,0,0],[0,0,1,1,1,1,0,0],[0,1,1,0,0,0,0,0],[0,1,0,0,0,1,1,0]],
+      [[0,0,1,1,1,1,0,0],[0,0,1,1,1,1,0,0],[0,0,0,1,1,0,0,0],[0,1,1,1,1,1,1,0],[0,0,1,1,1,1,0,0],[0,0,1,0,1,0,1,0],[0,1,1,0,0,0,0,0],[0,1,0,0,0,1,1,0]],
+      [[0,0,1,1,1,1,0,0],[0,0,1,1,1,1,0,0],[0,0,0,1,1,0,0,0],[0,1,1,1,1,1,1,0],[0,0,1,1,1,1,0,0],[0,1,0,1,0,1,0,0],[0,1,1,0,0,0,0,0],[0,1,0,0,0,1,1,0]],
+      [[0,0,1,1,1,1,0,0],[0,0,1,1,1,1,0,0],[0,0,0,1,1,0,0,0],[0,1,1,1,1,1,1,0],[0,0,1,1,1,1,0,0],[0,0,1,0,1,0,1,0],[0,1,1,0,0,0,0,0],[0,1,0,0,0,1,1,0]],
+      [[0,0,1,1,1,1,0,0],[0,0,1,1,1,1,0,0],[0,0,0,1,1,0,0,0],[0,1,1,1,1,1,1,0],[0,0,1,1,1,1,0,0],[0,0,1,1,1,1,0,0],[0,1,1,1,1,0,0,0],[0,1,0,0,0,1,1,0]],
+      [[0,0,1,1,1,1,0,0],[0,0,1,1,1,1,0,0],[0,0,0,1,1,0,0,0],[0,1,1,1,1,1,1,0],[0,0,1,1,1,1,0,0],[0,0,1,1,1,1,0,0],[0,1,1,0,1,1,0,0],[0,1,0,0,0,1,1,0]],
+      [[0,0,1,1,1,1,0,0],[0,0,1,1,1,1,0,0],[0,0,0,1,1,0,0,0],[0,1,1,1,1,1,1,0],[0,0,1,1,1,1,0,0],[0,0,1,1,1,1,0,0],[0,1,1,1,1,0,0,0],[0,1,0,0,0,1,1,0]],
+      [[0,0,1,1,1,1,0,0],[1,0,1,1,1,1,0,1],[0,0,0,1,1,0,0,0],[0,1,1,1,1,1,1,0],[0,0,1,1,1,1,0,0],[0,0,1,1,1,1,0,0],[0,1,1,0,0,0,0,0],[0,1,0,0,0,1,1,0]],
+      [[0,0,1,1,1,1,0,0],[0,0,1,1,1,1,0,0],[0,0,0,1,1,0,0,0],[0,1,1,1,1,1,1,0],[0,0,1,1,1,1,0,0],[0,0,1,1,1,1,0,0],[0,1,1,0,0,0,0,0],[0,1,0,0,0,1,1,0]],
+      [[0,0,1,1,1,1,0,0],[0,0,1,1,1,1,0,0],[0,0,0,1,1,0,0,0],[0,1,1,1,1,1,1,0],[0,0,1,1,1,1,0,0],[0,0,1,1,1,1,0,0],[0,1,1,0,0,0,0,0],[0,1,0,0,0,1,1,0]],
+      [[0,0,1,1,1,1,0,0],[0,0,1,0,0,1,0,0],[0,0,0,1,1,0,0,0],[0,1,1,1,1,1,1,0],[0,0,1,1,1,1,0,0],[0,0,1,1,1,1,0,0],[0,1,1,0,0,0,0,0],[0,1,0,0,0,1,1,0]],
+      [[0,0,1,1,1,1,0,0],[0,0,1,1,1,1,0,0],[0,0,0,1,0,1,0,0],[0,1,1,0,1,1,1,0],[0,0,1,1,1,1,0,0],[0,0,1,1,1,1,0,0],[0,1,1,0,0,0,0,0],[0,1,0,0,0,1,1,0]],
+      [[0,0,1,1,1,1,0,0],[0,0,1,1,1,1,0,0],[0,0,0,1,1,0,0,0],[0,1,0,1,1,0,1,0],[0,0,1,1,1,1,0,0],[0,0,1,1,1,1,0,0],[0,1,1,0,0,0,0,0],[0,1,0,0,0,1,1,0]],
+      [[0,0,1,1,1,1,0,0],[0,0,1,1,1,1,0,0],[0,0,0,1,1,0,0,0],[0,1,1,1,1,1,1,0],[0,0,1,1,1,1,0,0],[0,0,1,1,1,1,0,0],[0,1,1,0,0,1,1,0],[0,1,0,0,1,0,1,0]],
+      [[0,0,1,1,1,1,0,0],[0,0,1,1,1,1,0,0],[0,0,0,1,1,0,0,0],[0,1,1,1,1,1,1,0],[0,0,1,1,1,1,0,0],[0,0,1,1,1,1,0,0],[0,1,1,0,0,0,0,0],[0,1,0,0,0,1,1,0]],
+    ];
+    const DUCK_WALK = [
+      [[0,0,1,1,1,0,0,0],[0,1,1,1,1,1,0,0],[0,0,1,1,0,0,0,0],[0,1,1,1,1,1,1,0],[1,1,1,1,1,1,1,0],[0,1,1,1,1,1,0,0],[0,0,1,0,0,1,0,0],[0,0,1,0,0,1,0,0]],
+      [[0,0,1,1,1,0,0,0],[0,1,1,1,1,1,0,0],[0,0,1,1,0,0,0,0],[0,1,1,1,1,1,1,0],[1,1,1,1,1,1,1,0],[0,1,1,1,1,1,0,0],[0,0,0,1,1,0,0,0],[0,0,1,0,0,1,0,0]],
+      [[0,0,0,1,1,1,0,0],[0,0,1,1,1,1,1,0],[0,0,0,0,1,1,0,0],[0,1,1,1,1,1,1,0],[1,1,1,1,1,1,1,0],[0,1,1,1,1,1,0,0],[0,0,1,0,0,1,0,0],[0,0,1,0,0,1,0,0]],
+      [[0,0,0,1,1,1,0,0],[0,0,1,1,1,1,1,0],[0,0,0,0,1,1,0,0],[0,1,1,1,1,1,1,0],[1,1,1,1,1,1,1,0],[0,1,1,1,1,1,0,0],[0,0,0,1,1,0,0,0],[0,0,1,0,0,1,0,0]],
+    ];
+    const DUCK_FRAMES = [DUCK_WALK[0],...DUCK_WALK,...DUCK_WALK.slice(0,3),...DUCK_WALK.slice(0,3),...DUCK_WALK.slice(0,3),...DUCK_WALK.slice(0,3),DUCK_WALK[0],DUCK_WALK[1],DUCK_WALK[0],DUCK_WALK[1],DUCK_WALK[0],DUCK_WALK[1],DUCK_WALK[0],DUCK_WALK[1]].map(f=>f.map(r=>[...r]));
+    const CAT_WALK = [
+      pad8x8([[0,1,0,0,0,1,0,0],[1,1,1,1,1,1,1,0],[1,1,0,1,0,1,1,0],[1,1,1,1,1,1,1,0],[0,1,1,1,1,1,0,0],[1,1,0,0,0,1,0,0],[1,0,0,0,0,0,0,1],[0,0,0,0,0,0,0,0]]),
+      pad8x8([[0,1,0,0,0,1,0,0],[1,1,1,1,1,1,1,0],[1,1,0,1,0,1,1,0],[1,1,1,1,1,1,1,0],[0,1,1,1,1,1,0,0],[0,1,1,0,0,1,0,0],[1,0,0,0,0,0,1,1],[0,0,0,0,0,0,0,0]]),
+      pad8x8([[0,1,0,0,0,1,0,0],[1,1,1,1,1,1,1,0],[1,1,0,1,0,1,1,0],[1,1,1,1,1,1,1,0],[0,1,1,1,1,1,0,0],[1,1,0,0,0,1,0,0],[0,0,1,0,0,0,0,1],[0,0,0,0,0,0,0,0]]),
+      pad8x8([[0,1,0,0,0,1,0,0],[1,1,1,1,1,1,1,0],[1,1,0,1,0,1,1,0],[1,1,1,1,1,1,1,0],[0,1,1,1,1,1,0,0],[0,1,1,0,0,1,0,0],[1,0,0,0,0,0,1,1],[0,0,0,0,0,0,0,0]]),
+    ];
+    const CAT_FRAMES = [CAT_WALK[0],...CAT_WALK,...CAT_WALK.slice(0,3),...CAT_WALK.slice(0,3),...CAT_WALK.slice(0,3),...CAT_WALK.slice(0,3),CAT_WALK[0],CAT_WALK[1],CAT_WALK[0],CAT_WALK[1],CAT_WALK[0],CAT_WALK[1],CAT_WALK[0],CAT_WALK[1]].map(f=>f.map(r=>[...r]));
+    const BEAR_WALK = [
+      pad8x8([[1,0,1,1,1,1,0,1],[1,1,1,1,1,1,1,1],[0,1,0,1,1,0,1,0],[0,1,1,1,1,1,1,0],[0,1,1,1,1,1,1,0],[1,1,0,1,0,1,1,1],[1,0,0,1,0,1,0,1],[0,0,0,0,0,0,0,0]]),
+      pad8x8([[1,0,1,1,1,1,0,1],[1,1,1,1,1,1,1,1],[0,1,0,1,1,0,1,0],[0,1,1,1,1,1,1,0],[0,1,1,1,1,1,1,0],[0,1,0,1,1,0,1,0],[0,1,1,0,0,1,1,0],[0,0,0,0,0,0,0,0]]),
+      pad8x8([[1,0,1,1,1,1,0,1],[1,1,1,1,1,1,1,1],[0,1,0,1,1,0,1,0],[0,1,1,1,1,1,1,0],[0,1,1,1,1,1,1,0],[1,1,0,1,0,1,1,1],[0,1,0,1,0,1,0,1],[0,0,0,0,0,0,0,0]]),
+      pad8x8([[1,0,1,1,1,1,0,1],[1,1,1,1,1,1,1,1],[0,1,0,1,1,0,1,0],[0,1,1,1,1,1,1,0],[0,1,1,1,1,1,1,0],[0,1,0,1,1,0,1,0],[0,1,1,0,0,1,1,0],[0,0,0,0,0,0,0,0]]),
+    ];
+    const BEAR_FRAMES = [BEAR_WALK[0],...BEAR_WALK,...BEAR_WALK.slice(0,3),...BEAR_WALK.slice(0,3),...BEAR_WALK.slice(0,3),...BEAR_WALK.slice(0,3),BEAR_WALK[0],BEAR_WALK[1],BEAR_WALK[0],BEAR_WALK[1],BEAR_WALK[0],BEAR_WALK[1],BEAR_WALK[0],BEAR_WALK[1]].map(f=>f.map(r=>[...r]));
+    const RABBIT_WALK = [
+      pad8x8([[0,0,1,1,1,0,0,0],[0,1,0,1,0,1,0,0],[0,1,1,1,1,1,0,0],[1,1,1,1,1,1,1,0],[1,1,1,1,1,1,1,0],[0,1,1,1,1,1,0,0],[0,0,1,0,1,0,0,0],[0,0,0,0,0,0,0,0]]),
+      pad8x8([[0,0,1,1,1,0,0,0],[0,1,0,1,0,1,0,0],[0,1,1,1,1,1,0,0],[1,1,1,1,1,1,1,0],[1,1,1,1,1,1,1,0],[0,1,1,1,1,1,0,0],[1,0,0,1,0,0,1,0],[1,0,0,0,0,0,1,0]]),
+      pad8x8([[0,0,1,1,1,0,0,0],[0,1,0,1,0,1,0,0],[0,1,1,1,1,1,0,0],[1,1,1,1,1,1,1,0],[1,1,1,1,1,1,1,0],[0,1,1,1,1,1,0,0],[0,0,1,0,1,0,0,0],[0,0,0,0,0,0,0,0]]),
+      pad8x8([[0,0,1,1,1,0,0,0],[0,1,0,1,0,1,0,0],[0,1,1,1,1,1,0,0],[1,1,1,1,1,1,1,0],[1,1,1,1,1,1,1,0],[0,1,1,1,1,1,0,0],[1,0,0,1,0,0,1,0],[1,0,0,0,0,0,1,0]]),
+    ];
+    const RABBIT_FRAMES = [RABBIT_WALK[0],...RABBIT_WALK,...RABBIT_WALK.slice(0,3),...RABBIT_WALK.slice(0,3),...RABBIT_WALK.slice(0,3),...RABBIT_WALK.slice(0,3),RABBIT_WALK[0],RABBIT_WALK[1],RABBIT_WALK[0],RABBIT_WALK[1],RABBIT_WALK[0],RABBIT_WALK[1],RABBIT_WALK[0],RABBIT_WALK[1]].map(f=>f.map(r=>[...r]));
+    // 皮卡丘 Pikachu — 圆身尖耳 + 两眼小点 + 尾巴，25 帧与机器人等一致：每动作有不同身体姿态
+    const PIKACHU_IDLE = pad8x8([[0,1,0,0,0,0,1,0],[0,1,1,0,0,1,1,0],[0,1,1,1,1,1,1,0],[1,1,1,1,1,1,1,1],[1,1,1,1,1,1,1,1],[0,1,1,1,1,1,1,1],[0,0,1,1,1,1,1,1],[0,0,1,0,0,1,0,0]]);
+    const PIKACHU_WALK = [
+      pad8x8([[0,1,0,0,0,0,1,0],[0,1,1,0,0,1,1,0],[0,1,1,1,1,1,1,0],[1,1,1,1,1,1,1,1],[1,1,1,1,1,1,1,1],[0,1,1,1,1,1,1,1],[0,1,1,1,1,1,1,1],[0,1,0,0,0,0,1,0]]),
+      pad8x8([[0,1,0,0,0,0,1,0],[0,1,1,0,0,1,1,0],[0,1,1,1,1,1,1,0],[1,1,1,1,1,1,1,1],[1,1,1,1,1,1,1,1],[0,1,1,1,1,1,1,1],[0,0,0,1,1,1,1,1],[0,0,1,0,0,1,0,0]]),
+      pad8x8([[0,1,0,0,0,0,1,0],[0,1,1,0,0,1,1,0],[0,1,1,1,1,1,1,0],[1,1,1,1,1,1,1,1],[1,1,1,1,1,1,1,1],[0,1,1,1,1,1,1,1],[0,0,1,1,1,1,1,1],[0,1,0,0,0,0,1,0]]),
+      pad8x8([[0,1,0,0,0,0,1,0],[0,1,1,0,0,1,1,0],[0,1,1,1,1,1,1,0],[1,1,1,1,1,1,1,1],[1,1,1,1,1,1,1,1],[0,1,1,1,1,1,1,1],[0,0,0,1,1,1,1,1],[0,0,1,0,0,1,0,0]]),
+    ];
+    const PIKACHU_SEARCH = [
+      pad8x8([[0,1,0,0,0,0,1,0],[1,1,1,0,0,1,1,0],[0,1,1,1,1,1,0,0],[1,1,1,1,1,1,1,1],[1,1,1,1,1,1,1,1],[0,1,1,1,1,1,1,1],[0,0,1,1,1,1,1,1],[0,0,1,0,0,1,0,0]]),
+      pad8x8([[0,1,0,0,0,0,1,0],[0,1,1,0,0,1,1,0],[0,1,1,1,1,1,1,0],[1,1,1,1,1,1,1,1],[1,1,1,1,1,1,1,1],[0,1,1,1,1,1,1,1],[0,0,1,1,1,1,1,1],[0,0,1,0,0,1,0,0]]),
+      pad8x8([[0,1,0,0,0,0,1,0],[0,1,1,0,0,1,1,1],[0,0,1,1,1,1,1,0],[1,1,1,1,1,1,1,1],[1,1,1,1,1,1,1,1],[0,1,1,1,1,1,1,1],[0,0,1,1,1,1,1,1],[0,0,1,0,0,1,0,0]]),
+    ];
+    const PIKACHU_PROCESS = [
+      pad8x8([[0,1,0,0,0,0,1,0],[0,1,1,1,1,1,1,0],[0,1,1,1,1,1,1,0],[1,1,1,1,1,1,1,1],[1,1,1,1,1,1,1,1],[0,1,1,1,1,1,1,1],[0,0,1,1,1,1,1,1],[0,0,1,0,0,1,0,0]]),
+      pad8x8([[0,1,0,0,0,0,1,0],[0,1,1,0,0,1,1,0],[0,1,1,1,1,1,1,0],[1,1,1,1,1,1,1,1],[1,1,1,1,1,1,1,1],[0,1,1,1,1,1,1,1],[0,0,1,1,1,1,1,1],[0,0,1,0,0,1,0,0]]),
+      pad8x8([[0,1,0,0,0,0,1,0],[0,1,1,1,1,1,1,0],[0,1,1,1,1,1,1,0],[1,1,1,1,1,1,1,1],[1,1,1,1,1,1,1,1],[0,1,1,1,1,1,1,1],[0,0,1,1,1,1,1,1],[0,0,1,0,0,1,0,0]]),
+    ];
+    const PIKACHU_OUTPUT_TEXT = [
+      pad8x8([[0,1,0,0,0,0,1,0],[0,1,1,0,0,1,1,0],[0,1,1,1,1,1,1,0],[1,1,1,1,1,1,1,1],[1,1,1,1,1,1,1,1],[0,1,1,0,1,0,1,1],[0,0,1,1,1,1,1,1],[0,0,1,0,0,1,0,0]]),
+      pad8x8([[0,1,0,0,0,0,1,0],[0,1,1,0,0,1,1,0],[0,1,1,1,1,1,1,0],[1,1,1,1,1,1,1,1],[1,1,1,1,1,1,1,1],[0,1,0,1,0,1,1,1],[0,0,1,1,1,1,1,1],[0,0,1,0,0,1,0,0]]),
+      pad8x8([[0,1,0,0,0,0,1,0],[0,1,1,0,0,1,1,0],[0,1,1,1,1,1,1,0],[1,1,1,1,1,1,1,1],[1,1,1,1,1,1,1,1],[0,1,1,0,1,0,1,1],[0,0,1,1,1,1,1,1],[0,0,1,0,0,1,0,0]]),
+    ];
+    const PIKACHU_OUTPUT_VISUAL = [
+      pad8x8([[0,1,0,0,0,0,1,0],[0,1,1,0,0,1,1,0],[0,1,1,1,1,1,1,0],[1,1,1,1,1,1,1,1],[1,1,1,1,1,1,1,1],[0,1,1,1,1,1,1,0],[0,0,1,1,1,1,0,0],[0,0,1,0,0,1,0,0]]),
+      pad8x8([[0,1,0,0,0,0,1,0],[0,1,1,0,0,1,1,0],[0,1,1,1,1,1,1,0],[1,1,1,1,1,1,1,1],[1,1,1,1,1,1,1,1],[0,1,1,1,1,1,1,0],[0,0,1,1,0,1,1,0],[0,0,1,0,0,1,0,0]]),
+      pad8x8([[0,1,0,0,0,0,1,0],[0,1,1,0,0,1,1,0],[0,1,1,1,1,1,1,0],[1,1,1,1,1,1,1,1],[1,1,1,1,1,1,1,1],[0,1,1,1,1,1,1,0],[0,0,1,1,1,1,0,0],[0,0,1,0,0,1,0,0]]),
+    ];
+    const PIKACHU_LISTEN = [
+      pad8x8([[1,1,0,0,0,0,1,1],[0,1,1,0,0,1,1,0],[0,1,1,1,1,1,1,0],[1,1,1,1,1,1,1,1],[1,1,1,1,1,1,1,1],[0,1,1,1,1,1,1,1],[0,0,1,1,1,1,1,1],[0,0,1,0,0,1,0,0]]),
+      pad8x8([[0,1,0,0,0,0,1,0],[0,1,1,0,0,1,1,0],[0,1,1,1,1,1,1,0],[1,1,1,1,1,1,1,1],[1,1,1,1,1,1,1,1],[0,1,1,1,1,1,1,1],[0,0,1,1,1,1,1,1],[0,0,1,0,0,1,0,0]]),
+    ];
+    const PIKACHU_WAIT = [
+      pad8x8([[0,1,0,0,0,0,1,0],[0,1,1,0,0,1,1,0],[0,1,1,1,1,1,1,0],[1,1,1,1,1,1,1,1],[1,1,1,1,1,1,1,1],[0,1,1,1,1,1,1,1],[0,0,1,1,1,1,1,1],[0,0,1,0,0,1,0,0]]),
+      pad8x8([[0,1,0,0,0,0,1,0],[0,1,1,0,0,1,1,0],[0,1,1,1,1,1,1,0],[1,1,1,1,1,1,1,1],[1,1,1,1,1,1,1,1],[0,0,1,1,1,1,1,1],[0,0,0,1,1,1,1,1],[0,0,1,0,0,1,0,0]]),
+    ];
+    const PIKACHU_ERROR = [
+      pad8x8([[0,1,0,0,0,0,1,0],[0,1,1,0,0,1,1,0],[0,1,1,0,0,1,1,0],[1,1,1,1,1,1,1,1],[1,1,1,1,1,1,1,0],[0,1,1,1,1,1,1,1],[0,0,1,1,1,1,1,1],[0,0,1,0,0,1,0,0]]),
+      pad8x8([[0,1,0,0,0,0,1,0],[0,1,1,0,0,1,1,0],[0,1,0,1,1,0,1,0],[1,1,1,0,0,1,1,1],[1,1,1,1,1,1,1,1],[0,1,1,1,1,1,1,1],[0,0,1,1,1,1,1,1],[0,0,1,0,0,1,0,0]]),
+    ];
+    const PIKACHU_SUCCESS = [
+      pad8x8([[0,1,0,0,0,0,1,0],[0,1,1,0,0,1,1,0],[0,1,1,1,1,1,1,0],[1,1,1,1,1,1,1,1],[1,1,1,1,1,1,1,1],[0,1,1,1,1,1,1,1],[0,0,1,1,1,1,1,1],[0,0,1,1,0,1,1,0]]),
+      pad8x8([[0,1,0,0,0,0,1,0],[0,1,1,0,0,1,1,0],[0,1,1,1,1,1,1,0],[1,1,1,1,1,1,1,1],[1,1,1,1,1,1,1,1],[0,1,1,1,1,1,1,1],[0,0,1,1,1,1,1,1],[0,0,1,0,0,1,0,0]]),
+    ];
+    const PIKACHU_FRAMES = [
+      PIKACHU_IDLE,
+      ...PIKACHU_WALK,
+      ...PIKACHU_SEARCH,
+      ...PIKACHU_PROCESS,
+      ...PIKACHU_OUTPUT_TEXT,
+      ...PIKACHU_OUTPUT_VISUAL,
+      ...PIKACHU_LISTEN,
+      ...PIKACHU_WAIT,
+      ...PIKACHU_ERROR,
+      ...PIKACHU_SUCCESS,
+    ].map(f=>f.map(r=>[...r]));
+    var PIKACHU_CHEEK_GRID = [
+      [0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0],
+      [0,1,1,0,0,1,1,0],[0,1,1,0,0,1,1,0],
+      [0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0]
+    ];
+    var PIKACHU_EYE_GRID = [
+      [0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0],
+      [0,0,1,0,0,1,0,0],
+      [0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0]
+    ];
+    var PIKACHU_BELLY_GRID = [
+      [0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0],
+      [0,0,0,1,1,0,0,0],[0,0,0,1,1,0,0,0],
+      [0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0]
+    ];
+    const BASE_FRAMES = { robot: ROBOT_FRAMES, duck: DUCK_FRAMES, cat: CAT_FRAMES, bear: BEAR_FRAMES, rabbit: RABBIT_FRAMES, pikachu: PIKACHU_FRAMES };
+    const CHARACTERS = [
+      { id: 'c01', name: '科技人形', nameEn: 'Tech Humanoid', color: '#c5b4e3', base: 'robot', evolvedAccent: '#22c55e' },
+      { id: 'c02', name: '暖阳鸭', nameEn: 'Sun Duck', color: '#f4c97e', base: 'duck', evolvedAccent: '#6366f1' },
+      { id: 'c03', name: '薄荷兔', nameEn: 'Mint Rabbit', color: '#b5e3c5', base: 'rabbit', evolvedAccent: '#dc2626' },
+      { id: 'c04', name: '樱花喵咪', nameEn: 'Sakura Cat', color: '#e3b4c5', base: 'cat', evolvedAccent: '#0ea5e9' },
+      { id: 'c05', name: '天空熊', nameEn: 'Sky Bear', color: '#b4c5e3', base: 'bear', evolvedAccent: '#eab308' },
+      { id: 'c06', name: '暖橙人形', nameEn: 'Warm Humanoid', color: '#e8a87c', base: 'robot', evolvedAccent: '#7c3aed' },
+      { id: 'c07', name: '青柠鸭', nameEn: 'Lime Duck', color: '#7dd3b0', base: 'duck', evolvedAccent: '#ea580c' },
+      { id: 'c08', name: '薰衣草喵咪', nameEn: 'Lavender Cat', color: '#b8a9c9', base: 'cat', evolvedAccent: '#059669' },
+      { id: 'c09', name: '蜜桃兔', nameEn: 'Peach Rabbit', color: '#f2c4a8', base: 'rabbit', evolvedAccent: '#4f46e5' },
+      { id: 'c10', name: '深海熊', nameEn: 'Deep Bear', color: '#6b8cae', base: 'bear', evolvedAccent: '#f59e0b' },
+      { id: 'c11', name: '琥珀人形', nameEn: 'Amber Humanoid', color: '#d4a574', base: 'robot', evolvedAccent: '#06b6d4' },
+      { id: 'c12', name: '翡翠鸭', nameEn: 'Jade Duck', color: '#5dad8a', base: 'duck', evolvedAccent: '#ef4444' },
+      { id: 'c13', name: '玫瑰喵咪', nameEn: 'Rose Cat', color: '#c77b8a', base: 'cat', evolvedAccent: '#10b981' },
+      { id: 'c14', name: '奶油兔', nameEn: 'Cream Rabbit', color: '#f5e6d3', base: 'rabbit', evolvedAccent: '#8b5cf6' },
+      { id: 'c15', name: '靛青熊', nameEn: 'Indigo Bear', color: '#4a6fa5', base: 'bear', evolvedAccent: '#f97316' },
+      { id: 'c16', name: '珊瑚红人形', nameEn: 'Coral Humanoid', color: '#e0786a', base: 'robot', evolvedAccent: '#14b8a6' },
+      { id: 'c17', name: '柠檬鸭', nameEn: 'Lemon Duck', color: '#e8d86a', base: 'duck', evolvedAccent: '#ec4899' },
+      { id: 'c18', name: '丁香喵咪', nameEn: 'Lilac Cat', color: '#c9a0dc', base: 'cat', evolvedAccent: '#84cc16' },
+      { id: 'c19', name: '森林兔', nameEn: 'Forest Rabbit', color: '#6b9b7a', base: 'rabbit', evolvedAccent: '#f43f5e' },
+      { id: 'c20', name: '雾灰熊', nameEn: 'Mist Bear', color: '#8b9dc3', base: 'bear', evolvedAccent: '#a855f7' },
+      { id: 'c21', name: '皮卡丘', nameEn: 'Pikachu', color: '#F7C545', base: 'pikachu', evolvedAccent: '#EE9B2B' },
+    ];
+    function getCharacterFrames(character) { const b = BASE_FRAMES[character.base]; return b || ROBOT_FRAMES; }
+
+    // === 进化形态：各基础形态的增幅细节（8x8 叠加层，1=绘制高光/装饰）===
+    var EVOLVED_OVERLAY_GRIDS = {
+      robot: [  // 人形：天线 + 肩甲高光 + 胸口能量条
+        [0,0,1,1,1,1,0,0],
+        [0,0,0,1,1,0,0,0],
+        [0,1,0,1,1,0,1,0],
+        [0,0,0,0,0,0,0,0],
+        [0,0,0,1,1,0,0,0],
+        [0,0,0,1,1,0,0,0],
+        [0,0,0,0,0,0,0,0],
+        [0,0,0,0,0,0,0,0]
+      ],
+      duck: [   // 鸭子：头顶王冠/羽冠
+        [0,0,0,1,1,1,0,0],
+        [0,0,1,1,1,1,1,0],
+        [0,0,0,1,1,0,0,0],
+        [0,0,0,0,0,0,0,0],
+        [0,0,0,0,0,0,0,0],
+        [0,0,0,0,0,0,0,0],
+        [0,0,0,0,0,0,0,0],
+        [0,0,0,0,0,0,0,0]
+      ],
+      cat: [    // 猫咪：项圈 + 铃铛高光
+        [0,0,0,0,0,0,0,0],
+        [0,0,0,0,0,0,0,0],
+        [0,0,0,0,0,0,0,0],
+        [0,0,1,1,1,1,0,0],
+        [0,0,0,1,1,0,0,0],
+        [0,0,0,1,1,0,0,0],
+        [0,0,0,0,0,0,0,0],
+        [0,0,0,0,0,0,0,0]
+      ],
+      bear: [   // 熊：头盔轮廓 + 胸甲
+        [0,0,1,1,1,1,0,0],
+        [0,1,1,1,1,1,1,0],
+        [0,1,0,1,1,0,1,0],
+        [0,0,0,0,0,0,0,0],
+        [0,0,0,1,1,0,0,0],
+        [0,0,0,1,1,0,0,0],
+        [0,0,0,0,0,0,0,0],
+        [0,0,0,0,0,0,0,0]
+      ],
+      rabbit: [ // 兔子：耳朵蝴蝶结 + 胸口星星
+        [0,1,0,1,1,0,1,0],
+        [0,0,1,1,1,1,0,0],
+        [0,0,0,0,0,0,0,0],
+        [0,0,0,0,0,0,0,0],
+        [0,0,0,1,1,0,0,0],
+        [0,0,0,1,1,0,0,0],
+        [0,0,0,0,0,0,0,0],
+        [0,0,0,0,0,0,0,0]
+      ],
+      pikachu: [ // 雷丘 Raichu：仅耳尖/额头高光，不覆盖身体/尾巴/脚，保证进化后动作轮廓与未进化一致
+        [0,1,1,0,0,1,1,0],
+        [0,1,1,0,0,1,1,0],
+        [0,0,0,1,1,0,0,0],
+        [0,0,0,0,0,0,0,0],
+        [0,0,0,0,0,0,0,0],
+        [0,0,0,0,0,0,0,0],
+        [0,0,0,0,0,0,0,0],
+        [0,0,0,0,0,0,0,0]
+      ]
+    };
+    function getEvolvedAccentColor(character) {
+      return (character && character.evolvedAccent) ? character.evolvedAccent : '#fef08a';
+    }
+    function drawEvolutionOverlay(ctx, character, charLeft, charTop, charW, charH) {
+      var grid = EVOLVED_OVERLAY_GRIDS[character.base];
+      if (!grid) return;
+      var accent = getEvolvedAccentColor(character);
+      var overlayCanvas = document.createElement('canvas');
+      overlayCanvas.width = CHAR_FRAME_W;
+      overlayCanvas.height = CHAR_FRAME_H;
+      var octx = overlayCanvas.getContext('2d');
+      octx.imageSmoothingEnabled = false;
+      drawFrame(octx, grid, accent, 0, 0, CHAR_CELL);
+      ctx.drawImage(overlayCanvas, 0, 0, CHAR_FRAME_W, CHAR_FRAME_H, charLeft, charTop, charW, charH);
+    }
+
+    // === Canvas 渲染：角色 + 对应动作（高分辨率：dpr + 2x 角色源）===
+    const CELL = 4;   // 基准每格 4px（用于道具等）
+    const FRAME_W = 8 * CELL;
+    const FRAME_H = 8 * CELL;
+    /** 角色绘制用格距，2x 提升清晰度 */
+    const CHAR_CELL = 8;
+    const CHAR_FRAME_W = 8 * CHAR_CELL;
+    const CHAR_FRAME_H = 8 * CHAR_CELL;
+    const VIEWER_SCALE = 4;
+    const VIEWER_WIDTH_FACTOR = 3;
+
+    /** 在 2D 上下文的 (x,y) 处绘制一帧像素格，cell 为每格像素（默认 CELL） */
+    function drawFrame(ctx, grid, color, x, y, cell) {
+      const cs = cell != null ? cell : CELL;
+      const rows = grid.length;
+      const cols = (grid[0] && grid[0].length) || 0;
+      ctx.fillStyle = color;
+      for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+          if (grid[r][c]) {
+            ctx.fillRect(x + c * cs, y + r * cs, cs, cs);
+          }
+        }
+      }
+    }
+
+    var BASE_VIEWER_W = FRAME_W * VIEWER_SCALE;  // 原始宽度 128，用于计算角色尺寸
+    var VIEWER_W = BASE_VIEWER_W * VIEWER_WIDTH_FACTOR;  // 画布宽度 300%（384px）
+    var VIEWER_H = Math.round(BASE_VIEWER_W * 4 / 3);   // 高度保持 170，不随宽度变
+    var CHAR_SCALE = 0.34;  /* 在原有基础上再缩小 50%，角色整体等比例缩小一半 */
+    var CHAR_W = Math.round(BASE_VIEWER_W * CHAR_SCALE);  // 角色尺寸基于原始宽度，比例不变
+    var CHAR_H = CHAR_W;  // 角色比例不变，保持方形
+    var CHAR_CENTER_POS = true;   // true：角色在画布内水平、垂直 50% 居中
+
+    /** 像素风格：在 (ox, oy) 处绘制 grid（0/1 二维数组），每格 ps 像素，颜色 color */
+    function drawPixelGrid(ctx, grid, color, ox, oy, ps) {
+      ctx.fillStyle = color;
+      for (var r = 0; r < grid.length; r++) {
+        for (var c = 0; c < (grid[r] && grid[r].length) || 0; c++) {
+          if (grid[r][c]) ctx.fillRect(ox + c * ps, oy + r * ps, ps, ps);
+        }
+      }
+    }
+
+    /** 搜索：放大镜（像素） */
+    var MAGNIFIER_GRID = [
+      [0,0,0,1,1,1,0,0],
+      [0,0,1,1,1,1,1,0],
+      [0,1,1,1,1,1,1,1],
+      [1,1,1,1,1,1,1,1],
+      [0,1,1,1,1,1,1,0],
+      [0,0,1,1,1,1,0,0],
+      [0,0,0,1,1,0,0,0],
+      [0,0,0,0,1,1,0,0],
+      [0,0,0,0,0,1,1,0]
+    ];
+    /** 搜索：思考云（像素，更像云朵的蓬松造型） */
+    var CLOUD_GRID = [
+      [0,0,0,0,0,0,1,1,1,1,0,0,0],
+      [0,0,0,0,1,1,1,1,1,1,1,1,0],
+      [0,0,1,1,1,1,1,1,1,1,1,1,1],
+      [0,1,1,1,1,1,1,1,1,1,1,1,1],
+      [1,1,1,1,1,1,1,1,1,1,1,1,0],
+      [0,1,1,1,1,1,1,1,1,1,1,0,0]
+    ];
+    function drawSearchProp(ctx, character, scale, box) {
+      var charIdx = CHARACTERS.indexOf(character);
+      if (charIdx < 0) charIdx = 0;
+      var ps = scale;
+      if (charIdx % 2 === 0) {
+        drawPixelGrid(ctx, MAGNIFIER_GRID, '#d4d4d8', box.left + box.w - 8 * ps, box.top + 2 * ps, ps);
+      } else {
+        var cloudW = 13 * ps;
+        var cloudH = 6 * ps;
+        var cloudX = box.left + box.w - cloudW - 2;
+        var cloudY = Math.max(0, box.top - cloudH - 12);
+        drawPixelGrid(ctx, CLOUD_GRID, '#e4e4e7', cloudX, cloudY, ps);
+      }
+    }
+
+    /** 处理：笔记本（像素，实色像笔记本：封面+书脊+内页横线） */
+    var NOTEBOOK_COVER_GRID = [
+      [1,1,1,1,1,1,1,1,1,1,1],
+      [1,1,1,1,1,1,1,1,1,1,1],
+      [1,1,1,1,1,1,1,1,1,1,1],
+      [1,1,1,1,1,1,1,1,1,1,1],
+      [1,1,1,1,1,1,1,1,1,1,1],
+      [1,1,1,1,1,1,1,1,1,1,1],
+      [1,1,1,1,1,1,1,1,1,1,1],
+      [1,1,1,1,1,1,1,1,1,1,1]
+    ];
+    var NOTEBOOK_SPINE_GRID = [ [1],[1],[1],[1],[1],[1],[1],[1] ];
+    /** 处理：小黑板+粉笔线（像素） */
+    var BOARD_GRID = [
+      [1,1,1,1,1,1,1,1,1,1,1,1],
+      [1,0,0,0,0,0,0,0,0,0,0,1],
+      [1,0,0,0,1,1,0,0,0,0,0,1],
+      [1,0,0,1,1,1,1,0,0,0,0,1],
+      [1,0,0,0,1,1,0,0,0,0,0,1],
+      [1,0,0,0,0,0,0,0,0,0,0,1],
+      [1,1,1,1,1,1,1,1,1,1,1,1]
+    ];
+    /** 处理：便签+笔（像素） */
+    var STICKY_GRID = [
+      [1,1,1,1,1,1,1,1],
+      [1,1,1,1,1,1,1,1],
+      [1,1,1,1,1,1,1,0],
+      [1,1,1,1,1,1,0,0],
+      [1,1,1,1,1,0,0,0]
+    ];
+    var PEN_GRID = [[1],[1],[1],[1],[1]];
+    function drawProcessProp(ctx, character, scale, box) {
+      var charIdx = CHARACTERS.indexOf(character);
+      if (charIdx < 0) charIdx = 0;
+      var ps = scale;
+      var variant = charIdx % 3;
+      if (variant === 0) {
+        var nbX = box.left + box.w - 11 * ps;
+        var nbY = box.top + box.h - 8 * ps;
+        drawPixelGrid(ctx, NOTEBOOK_COVER_GRID, '#52525b', nbX, nbY, ps);
+        drawPixelGrid(ctx, NOTEBOOK_SPINE_GRID, '#3f3f46', nbX + 11 * ps, nbY, ps);
+        ctx.fillStyle = '#e4e4e7';
+        for (var i = 0; i < 5; i++) ctx.fillRect(nbX + ps, nbY + (2 + i) * ps, 8 * ps, ps);
+      } else if (variant === 1) {
+        drawPixelGrid(ctx, BOARD_GRID, '#3f4f5f', box.left - 2 * ps, box.top + box.h - 7 * ps, ps);
+        drawPixelGrid(ctx, [[1,1,0],[1,1,1],[0,1,1]], '#c4b5b5', box.left + 4 * ps, box.top + box.h - 5 * ps, ps);
+      } else {
+        drawPixelGrid(ctx, STICKY_GRID, '#fef08a', box.left + box.w - 8 * ps, box.top + box.h - 5 * ps, ps);
+        drawPixelGrid(ctx, PEN_GRID, '#94a3b8', box.left + box.w - 2 * ps, box.top + box.h - 4 * ps, ps);
+      }
+    }
+
+    /** 成功：爱心（像素，简洁） */
+    var HEART_GRID = [
+      [0,0,0,1,1,0,0,0,1,1,0,0,0],
+      [0,0,1,1,1,1,0,1,1,1,1,0,0],
+      [0,1,1,1,1,1,1,1,1,1,1,1,0],
+      [0,1,1,1,1,1,1,1,1,1,1,1,0],
+      [0,0,1,1,1,1,1,1,1,1,1,0,0],
+      [0,0,0,1,1,1,1,1,1,1,0,0,0],
+      [0,0,0,0,1,1,1,1,1,0,0,0,0],
+      [0,0,0,0,0,1,1,1,0,0,0,0,0]
+    ];
+    /** 精灵球 Poké Ball（皮卡丘成功时使用）：上红下白中黑线+钮 */
+    var POKEBALL_RED = [
+      [0,0,0,1,1,1,0,0,0],
+      [0,0,1,1,1,1,1,0,0],
+      [0,1,1,1,0,1,1,1,0],
+      [1,1,1,0,0,0,1,1,1]
+    ];
+    var POKEBALL_WHITE = [
+      [0,0,0,1,1,1,0,0,0],
+      [0,1,1,1,0,1,1,1,0],
+      [0,0,1,1,1,1,1,0,0],
+      [0,0,0,1,1,1,0,0,0]
+    ];
+    var POKEBALL_BLACK = [
+      [0,0,0,0,1,0,0,0,0],
+      [0,0,0,0,1,0,0,0,0],
+      [0,0,0,0,1,0,0,0,0],
+      [1,1,1,1,1,1,1,1,1],
+      [0,0,0,0,1,0,0,0,0],
+      [0,0,0,0,1,0,0,0,0],
+      [0,0,0,0,1,0,0,0,0]
+    ];
+    function drawSuccessProp(ctx, character, scale, box) {
+      var ps = scale;
+      if (character.base === 'pikachu') {
+        var ballW = 9 * ps;
+        var ballH = 7 * ps;
+        var x = box.left + (box.w - ballW) / 2;
+        var y = Math.max(0, box.top - ballH - 14);
+        drawPixelGrid(ctx, POKEBALL_RED, '#ef4444', x, y, ps);
+        drawPixelGrid(ctx, POKEBALL_WHITE, '#ffffff', x, y + 3 * ps, ps);
+        drawPixelGrid(ctx, POKEBALL_BLACK, '#1f2937', x, y, ps);
+        return;
+      }
+      var heartW = 13 * ps;
+      var heartH = 8 * ps;
+      var x = box.left + (box.w - heartW) / 2;
+      var y = Math.max(0, box.top - heartH - 14);
+      drawPixelGrid(ctx, HEART_GRID, '#f87171', x, y, ps);
+    }
+
+    /** 错误：粗体小交叉（像素，统一使用） */
+    var ERROR_X_THICK_GRID = [
+      [1,1,0,0,0,0,0,0,0,0,0,1,1],
+      [1,1,1,0,0,0,0,0,0,0,1,1,1],
+      [0,1,1,1,0,0,0,0,0,1,1,1,0],
+      [0,0,1,1,1,0,0,0,1,1,1,0,0],
+      [0,0,0,1,1,1,0,1,1,1,0,0,0],
+      [0,0,0,0,1,1,1,1,1,0,0,0,0],
+      [0,0,0,1,1,1,0,1,1,1,0,0,0],
+      [0,0,1,1,1,0,0,0,1,1,1,0,0],
+      [0,1,1,1,0,0,0,0,0,1,1,1,0],
+      [1,1,1,0,0,0,0,0,0,0,1,1,1],
+      [1,1,0,0,0,0,0,0,0,0,0,1,1]
+    ];
+    function drawErrorProp(ctx, character, scale, box) {
+      var ps = scale;
+      var x = box.left + box.w - 12 * ps;
+      var y = box.top + (box.h - 11 * ps) / 2;
+      drawPixelGrid(ctx, ERROR_X_THICK_GRID, '#ef4444', x, y, ps);
+    }
+
+    /** 对话：头顶气泡先出，文字打字机效果。typedLen=已显示字数，气泡尺寸与角色比例一致 */
+    var DIALOGUE_BUBBLE_SCALE = 1.2 * (CHAR_SCALE / 0.85);  /* 随角色缩小而缩小，保持与角色同比例 */
+    var DIALOGUE_TYPE_INTERVAL = 80;
+    function drawDialogueProp(ctx, box, fullText, tint, typedLen) {
+      if (fullText == null || fullText === '') return;
+      ctx.save();
+      var s = DIALOGUE_BUBBLE_SCALE;
+      ctx.font = '500 ' + Math.round(12 * s) + 'px "Noto Sans SC", sans-serif';
+      ctx.textBaseline = 'middle';
+      var tw = ctx.measureText(fullText).width;
+      var padX = 12 * s, padY = 6 * s, bh = 24 * s, r = 10 * s, tailH = 6 * s;
+      var bw = Math.max(tw + padX * 2, 60 * s);
+      var cx = box.left + box.w / 2;
+      var bx = cx - bw / 2;
+      var by = Math.max(10, box.top - bh - tailH - 10);
+      bx = Math.max(4, Math.min(ctx.canvas.width - bw - 4, bx));
+      var tx2 = Math.max(bx + r, Math.min(bx + bw - r, cx));
+      var tailW = 4 * s;
+      var hex = (tint || '#e4e4e7').replace('#', '');
+      var tr = parseInt(hex.slice(0, 2), 16);
+      var tg = parseInt(hex.slice(2, 4), 16);
+      var tb = parseInt(hex.slice(4, 6), 16);
+      ctx.fillStyle = '#111111';
+      ctx.strokeStyle = 'rgba(' + tr + ',' + tg + ',' + tb + ',0.5)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(bx + r, by);
+      ctx.arcTo(bx + bw, by, bx + bw, by + bh, r);
+      ctx.arcTo(bx + bw, by + bh, bx, by + bh, r);
+      ctx.arcTo(bx, by + bh, bx, by, r);
+      ctx.arcTo(bx, by, bx + bw, by, r);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = '#111111';
+      ctx.beginPath();
+      ctx.moveTo(tx2 - tailW, by + bh - 0.5);
+      ctx.lineTo(tx2 + tailW, by + bh - 0.5);
+      ctx.lineTo(tx2, by + bh + tailH);
+      ctx.closePath();
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(' + tr + ',' + tg + ',' + tb + ',0.45)';
+      ctx.beginPath();
+      ctx.moveTo(tx2 - tailW, by + bh);
+      ctx.lineTo(tx2, by + bh + tailH);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(tx2 + tailW, by + bh);
+      ctx.lineTo(tx2, by + bh + tailH);
+      ctx.stroke();
+      var showText = (typedLen != null && typedLen < fullText.length)
+        ? fullText.slice(0, Math.floor(typedLen))
+        : fullText;
+      ctx.fillStyle = tint || '#e4e4e7';
+      ctx.fillText(showText, bx + padX, by + bh / 2);
+      ctx.restore();
+    }
+
+    /**
+     * 用 canvas 渲染「当前角色 + 当前动作」的某一帧。
+     * 进化态（如雷丘）与未进化态共用同一套帧与动作参数：同一 character、同一 frameIndex/actionId、
+     * 同一 walkOffsetX/bounceOffsetY/idleOffsetX/idleOffsetY，仅外观（颜色/叠加层）不同。
+     * opts: { actionId, isEvolved, time, walkOffsetX, bounceOffsetY, idleOffsetX, idleOffsetY }
+     */
+    function renderCharacterActionToCanvas(canvas, character, frameIndex, opts) {
+      if (!canvas || !character) return;
+      var ctx = canvas.getContext('2d');
+      if (!ctx) return;
+      var frames = getCharacterFrames(character);
+      var grid = frames[frameIndex];
+      if (!grid) return;
+
+      opts = opts || {};
+      var actionId = opts.actionId || 'idle';
+      var walkOffsetX = opts.walkOffsetX != null ? opts.walkOffsetX : 0;
+      var bounceOffsetY = opts.bounceOffsetY != null ? opts.bounceOffsetY : 0;
+      var idleOffsetX = opts.idleOffsetX != null ? opts.idleOffsetX : 0;
+      var idleOffsetY = opts.idleOffsetY != null ? opts.idleOffsetY : 0;
+      var isWalk = actionId === 'walk';
+      var cw = VIEWER_W;
+      var ch = VIEWER_H;
+      var dpr = Math.min(window.devicePixelRatio || 1, 3);
+      var bufferW = Math.round(cw * dpr);
+      var bufferH = Math.round(ch * dpr);
+      if (canvas.width !== bufferW || canvas.height !== bufferH) {
+        canvas.width = bufferW;
+        canvas.height = bufferH;
+        canvas.style.width = cw + 'px';
+        canvas.style.height = ch + 'px';
+      }
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.imageSmoothingEnabled = false;
+      ctx.fillStyle = '#1c1c1e';
+      ctx.fillRect(0, 0, cw, ch);
+
+      /* 角色位置：画布内 50% 水平居中、50% 垂直居中 */
+      var charLeft = (cw - CHAR_W) / 2 + (isWalk ? walkOffsetX : idleOffsetX);
+      var charTop = (ch - CHAR_H) / 2 + bounceOffsetY + (isWalk ? 0 : idleOffsetY);
+      var bodyDim = opts.isTransitioning && (opts.transitionFlashStep % 2 === 1);
+      if (bodyDim) ctx.save();
+      if (bodyDim) ctx.globalAlpha = 0.25;
+
+      var bodyColor = (character.base === 'pikachu' && opts.isEvolved) ? getEvolvedAccentColor(character) : character.color;
+      var temp = document.createElement('canvas');
+      temp.width = CHAR_FRAME_W;
+      temp.height = CHAR_FRAME_H;
+      var tctx = temp.getContext('2d');
+      tctx.imageSmoothingEnabled = false;
+      drawFrame(tctx, grid, bodyColor, 0, 0, CHAR_CELL);
+      if (character.base === 'pikachu') {
+        if (opts.isEvolved) drawFrame(tctx, PIKACHU_BELLY_GRID, character.color, 0, 0, CHAR_CELL);
+        drawFrame(tctx, PIKACHU_CHEEK_GRID, '#E53939', 0, 0, CHAR_CELL);
+        drawFrame(tctx, PIKACHU_EYE_GRID, '#1a1a1a', 0, 0, CHAR_CELL);
+      }
+      ctx.drawImage(temp, 0, 0, CHAR_FRAME_W, CHAR_FRAME_H, charLeft, charTop, CHAR_W, CHAR_H);
+
+      if (opts.isEvolved) drawEvolutionOverlay(ctx, character, charLeft, charTop, CHAR_W, CHAR_H);
+
+      if (bodyDim) ctx.restore();
+
+      var scale = VIEWER_SCALE;
+      var box = { left: charLeft, top: charTop, w: CHAR_W, h: CHAR_H };
+      if (actionId === 'search') drawSearchProp(ctx, character, scale, box);
+      else if (actionId === 'process') drawProcessProp(ctx, character, scale, box);
+      else if (actionId === 'success') drawSuccessProp(ctx, character, scale, box);
+      else if (actionId === 'error') drawErrorProp(ctx, character, scale, box);
+      else if (actionId === 'dialogue' && opts.dialogueText != null) drawDialogueProp(ctx, box, opts.dialogueText, character.color, opts.dialogueTypedLength);
+    }
+
+    function buildStripCanvas(frames, color) {
+      const w = TOTAL_FRAMES * FRAME_W;
+      const h = FRAME_H;
+      const canvas = document.createElement('canvas');
+      canvas.width = w;
+      canvas.height = h;
+      const ctx = canvas.getContext('2d');
+      for (let i = 0; i < TOTAL_FRAMES && i < frames.length; i++) {
+        drawFrame(ctx, frames[i], color, i * FRAME_W, 0);
+      }
+      return canvas;
+    }
+
+    function getPreviewCanvas(character) {
+      const frames = getCharacterFrames(character);
+      const canvas = buildStripCanvas(frames, character.color);
+      const out = document.createElement('canvas');
+      out.width = 64;
+      out.height = 64;
+      const ctx = out.getContext('2d');
+      ctx.imageSmoothingEnabled = false;
+      ctx.drawImage(canvas, 0, 0, FRAME_W, FRAME_H, 0, 0, 64, 64);
+      return out;
+    }
+
+    /** 生成角色头像图（单帧 64x64），供外部通过 postMessage 获取 */
+    function getAvatarDataUrl(characterIndex, evolved) {
+      var character = CHARACTERS[characterIndex];
+      if (!character) return null;
+      var canvas = document.createElement('canvas');
+      canvas.width = 64;
+      canvas.height = 64;
+      var ctx = canvas.getContext('2d');
+      ctx.imageSmoothingEnabled = false;
+      var frames = getCharacterFrames(character);
+      var grid = frames[0];
+      if (!grid) return null;
+      var bodyColor = (character.base === 'pikachu' && evolved) ? getEvolvedAccentColor(character) : character.color;
+      drawFrame(ctx, grid, bodyColor, 0, 0, CHAR_CELL);
+      if (character.base === 'pikachu') {
+        if (evolved) drawFrame(ctx, PIKACHU_BELLY_GRID, character.color, 0, 0, CHAR_CELL);
+        drawFrame(ctx, PIKACHU_CHEEK_GRID, '#E53939', 0, 0, CHAR_CELL);
+        drawFrame(ctx, PIKACHU_EYE_GRID, '#1a1a1a', 0, 0, CHAR_CELL);
+      }
+      return canvas.toDataURL('image/png');
+    }
+
+    var currentCharIndex = 0;
+    var currentActionIndex = 10;  // 默认动作为「对话」Dialogue
+    var animId = null;
+    var isEvolved = false;  // 是否显示进化形态
+    var isTransitioning = false;
+    var transitionTargetEvolved = false;
+    var transitionFlashStep = 0;
+    var transitionIntervalId = null;
+    var dialogueText = null;
+    var dialogueShowAt = 0;
+    var dialogueDuration = 0;
+    var dialogueHideAt = null;
+    var dialogueTypedLength = 0;
+    var dialogueLastTypeAt = 0;
+    var locale = 'zh';
+    var bases = { robot: '人形', duck: '鸭子', cat: '猫咪', bear: '熊', rabbit: '兔子', pikachu: '皮卡丘' };
+    var bases_en = { robot: 'Humanoid', duck: 'Duck', cat: 'Cat', bear: 'Bear', rabbit: 'Rabbit', pikachu: 'Pikachu' };
+    function getDialogueTexts() { return locale === 'en' ? DIALOGUE_TEXTS_EN : DIALOGUE_TEXTS; }
+    function getActionDisplayName(actionKey) { return locale === 'en' ? (ACTION_NAMES_EN[actionKey] || actionKey) : (ACTIONS[actionKey] ? ACTIONS[actionKey].name : actionKey); }
+    function getCharDisplayName(char) { return (locale === 'en' && char.nameEn) ? char.nameEn : char.name; }
+    function getBaseLabel(base) { return locale === 'en' ? (bases_en[base] || base) : (bases[base] || base); }
+    function getSubtitle() { return locale === 'en' ? 'Custom skills, proactive AI that understands user intent' : '定制化技能，主动洞察用户意图的智能体'; }
+    function getTitle() { return locale === 'en' ? 'Thinker Pet — AI Character & State Browser' : 'Thinker Pet — AI 角色与状态浏览'; }
+    function getIntegrationLinkText() { return locale === 'en' ? 'View integration docs' : '查看接入文档'; }
+    function getModalTitleText() { return locale === 'en' ? 'Integration Docs' : '接入文档'; }
+    function getModalCloseText() { return locale === 'en' ? 'Close' : '关闭'; }
+    function getEvolveBtnText() { return isEvolved ? (locale === 'en' ? '◆ Restore' : '◆ 恢复') : (locale === 'en' ? '✦ Evolve' : '✦ 进化'); }
+    function getEvolveBtnTitle() { return isEvolved ? (locale === 'en' ? 'Click to restore' : '点击恢复原貌') : (locale === 'en' ? 'Click to evolve, again to restore' : '点击进化，再次点击恢复'); }
+
+    function getCurrentCharacter() { return CHARACTERS[currentCharIndex]; }
+    function getCurrentActionId() { return ACTIONS[FRAME_ORDER[currentActionIndex]].id; }
+    function getActionIndexById(actionId) {
+      var key = Object.keys(ACTIONS).find(function(k) { return ACTIONS[k].id === actionId; });
+      return key ? FRAME_ORDER.indexOf(key) : -1;
+    }
+    function applyState(charIndex, actionIdxOrId, evolved) {
+      if (charIndex != null && charIndex >= 0 && charIndex < CHARACTERS.length) currentCharIndex = charIndex;
+      if (actionIdxOrId != null) {
+        var idx = typeof actionIdxOrId === 'number' ? actionIdxOrId : getActionIndexById(actionIdxOrId);
+        if (idx >= 0 && idx < FRAME_ORDER.length) currentActionIndex = idx;
+      }
+      if (typeof evolved === 'boolean' && !isTransitioning) isEvolved = evolved;
+      updateCharUI();
+      renderActionButtons();
+      updateEvolveButton();
+      startViewerAnimation();
+    }
+
+    function updateCharUI() {
+      var char = getCurrentCharacter();
+      var el = document.getElementById('char-label');
+      if (el) el.innerHTML = getCharDisplayName(char) + ' <span class="muted">' + (currentCharIndex + 1) + ' / ' + CHARACTERS.length + '</span>';
+      var meta = document.getElementById('char-meta');
+      if (meta) meta.innerHTML = '<span style="background:' + char.color + '"></span> ' + char.color + ' · ' + getBaseLabel(char.base);
+    }
+
+    function renderActionButtons() {
+      var container = document.getElementById('action-buttons');
+      if (!container) return;
+      container.innerHTML = '';
+      FRAME_ORDER.forEach(function(actionKey, index) {
+        var a = ACTIONS[actionKey];
+        if (!a) return;
+        var btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'action-btn' + (index === currentActionIndex ? ' active' : '');
+        btn.textContent = getActionDisplayName(actionKey);
+        btn.dataset.actionIndex = index;
+        btn.addEventListener('click', function() {
+          currentActionIndex = index;
+          renderActionButtons();
+          startViewerAnimation();
+        });
+        container.appendChild(btn);
+      });
+    }
+
+    function startViewerAnimation() {
+      if (animId) cancelAnimationFrame(animId);
+      var currentCharacter = getCurrentCharacter();
+      var currentActionId = getCurrentActionId();
+      if (currentActionId !== 'dialogue') {
+        dialogueText = null;
+        dialogueHideAt = null;
+        dialogueTypedLength = 0;
+      }
+      var range = getFrameRange(currentActionId);
+      if (!range || !currentCharacter) return;
+
+      var canvas = document.getElementById('viewer-canvas');
+      if (!canvas) return;
+
+      var frameIndex = range.start;
+      var fps = 6;
+      var interval = 1000 / fps;
+      var last = performance.now();
+      var moveRange = Math.round(CHAR_W * 0.5);
+
+      function getOpts(now) {
+        var opts = {
+          actionId: currentActionId,
+          isEvolved: isEvolved,
+          isTransitioning: isTransitioning,
+          transitionFlashStep: transitionFlashStep,
+          dialogueText: currentActionId === 'dialogue' ? dialogueText : null,
+          dialogueTypedLength: currentActionId === 'dialogue' ? dialogueTypedLength : 0
+        };
+        if (currentActionId === 'walk') {
+          opts.walkOffsetX = (moveRange / 2) * Math.sin(now / 420);
+          opts.walkOffsetX = Math.round(opts.walkOffsetX);
+        }
+        if (currentActionId === 'success') {
+          opts.bounceOffsetY = Math.round(-10 * Math.sin(now / 180));
+        }
+        if (currentActionId === 'idle') {
+          opts.idleOffsetX = Math.round(2 * Math.sin(now / 800));
+          opts.idleOffsetY = Math.round(-3 * Math.sin(now / 600));
+        }
+        opts.time = now;
+        return opts;
+      }
+
+      renderCharacterActionToCanvas(canvas, currentCharacter, frameIndex, getOpts(performance.now()));
+
+      function loop(now) {
+        animId = requestAnimationFrame(loop);
+        if (currentActionId === 'dialogue') {
+          if (dialogueText !== null) {
+            if (dialogueTypedLength < dialogueText.length && now - dialogueLastTypeAt >= DIALOGUE_TYPE_INTERVAL) {
+              dialogueTypedLength++;
+              dialogueLastTypeAt = now;
+            }
+            if (now - dialogueShowAt >= dialogueDuration) {
+              dialogueText = null;
+              dialogueHideAt = now;
+              dialogueTypedLength = 0;
+            }
+          } else {
+            if (dialogueHideAt === null || now - dialogueHideAt >= 2000) {
+              var texts = getDialogueTexts();
+              dialogueText = texts[Math.floor(Math.random() * texts.length)];
+              dialogueShowAt = now;
+              dialogueDuration = 4000 + Math.random() * 2000;
+              dialogueHideAt = null;
+              dialogueTypedLength = 0;
+              dialogueLastTypeAt = now;
+            }
+          }
+        }
+        if (now - last >= interval) {
+          last = now;
+          frameIndex = range.start + ((frameIndex - range.start + 1) % range.count);
+        }
+        renderCharacterActionToCanvas(canvas, currentCharacter, frameIndex, getOpts(now));
+      }
+      loop(performance.now());
+    }
+
+    function onCharChange() {
+      updateCharUI();
+      startViewerAnimation();
+    }
+
+    function updateEvolveButton() {
+      var btn = document.getElementById('btn-evolve');
+      if (!btn) return;
+      btn.textContent = getEvolveBtnText();
+      btn.title = getEvolveBtnTitle();
+      if (isEvolved) btn.classList.add('evolved'); else btn.classList.remove('evolved');
+    }
+    function updateLangToggleButtons() {
+      var zhBtn = document.getElementById('lang-zh');
+      var enBtn = document.getElementById('lang-en');
+      if (zhBtn) zhBtn.classList.toggle('active', locale === 'zh');
+      if (enBtn) enBtn.classList.toggle('active', locale === 'en');
+    }
+    function setLocale(l) {
+      if (l !== 'zh' && l !== 'en') return;
+      locale = l;
+      document.title = getTitle();
+      var sub = document.getElementById('page-subtitle');
+      if (sub) sub.textContent = getSubtitle();
+      var docLink = document.getElementById('integration-doc-link');
+      if (docLink) docLink.textContent = getIntegrationLinkText();
+      var modal = document.getElementById('integration-modal');
+      if (modal && modal.classList.contains('visible')) {
+        var t = document.getElementById('integration-modal-title');
+        if (t) t.textContent = getModalTitleText();
+        var c = document.getElementById('integration-modal-close');
+        if (c) c.textContent = getModalCloseText();
+      }
+      updateCharUI();
+      renderActionButtons();
+      updateEvolveButton();
+      updateLangToggleButtons();
+      if (getCurrentActionId() === 'dialogue') {
+        dialogueText = null;
+        dialogueHideAt = null;
+        dialogueTypedLength = 0;
+      }
+      startViewerAnimation();
+    }
+
+    function openIntegrationModal() {
+      var overlay = document.getElementById('integration-modal');
+      var titleEl = document.getElementById('integration-modal-title');
+      var closeEl = document.getElementById('integration-modal-close');
+      var bodyEl = document.getElementById('integration-modal-body');
+      if (!overlay || !bodyEl) return;
+      if (titleEl) titleEl.textContent = getModalTitleText();
+      if (closeEl) closeEl.textContent = getModalCloseText();
+      bodyEl.innerHTML = locale === 'en' ? 'Loading…' : '加载中…';
+      overlay.classList.add('visible');
+      overlay.setAttribute('aria-hidden', 'false');
+      fetch('INTEGRATION.md').then(function(r) { return r.text(); }).then(function(md) {
+        if (typeof marked !== 'undefined') {
+          var html = marked.parse(md, { gfm: true });
+          bodyEl.innerHTML = '<div class="md-content">' + html + '</div>';
+        } else {
+          bodyEl.textContent = md;
+        }
+      }).catch(function() {
+        bodyEl.innerHTML = locale === 'en' ? 'Failed to load document.' : '文档加载失败。';
+      });
+    }
+    function closeIntegrationModal() {
+      var overlay = document.getElementById('integration-modal');
+      if (overlay) {
+        overlay.classList.remove('visible');
+        overlay.setAttribute('aria-hidden', 'true');
+      }
+    }
+
+    function initGallery() {
+      var params = new URLSearchParams(window.location.search);
+      var isEmbed = params.get('embed') === '1';
+      if (isEmbed) document.body.classList.add('embed-mode');
+
+      var charParam = params.get('character');
+      var actionParam = params.get('action');
+      var evolvedParam = params.get('evolved');
+      if (charParam != null) {
+        var ci = parseInt(charParam, 10);
+        if (!isNaN(ci)) currentCharIndex = Math.max(0, Math.min(ci, CHARACTERS.length - 1));
+      }
+      if (actionParam != null) {
+        var ai = getActionIndexById(actionParam);
+        if (ai >= 0) currentActionIndex = ai;
+        else { var an = parseInt(actionParam, 10); if (!isNaN(an)) currentActionIndex = Math.max(0, Math.min(an, FRAME_ORDER.length - 1)); }
+      }
+      if (evolvedParam != null) isEvolved = evolvedParam === '1' || evolvedParam === 'true';
+      var langParam = params.get('lang') || params.get('language');
+      if (langParam === 'en' || langParam === 'zh') setLocale(langParam);
+      else if (!isEmbed) {
+        document.title = getTitle();
+        var sub = document.getElementById('page-subtitle');
+        if (sub) sub.textContent = getSubtitle();
+        var docLink = document.getElementById('integration-doc-link');
+        if (docLink) docLink.textContent = getIntegrationLinkText();
+      }
+      if (!isEmbed) {
+        updateCharUI();
+        renderActionButtons();
+        updateEvolveButton();
+        updateLangToggleButtons();
+      }
+      startViewerAnimation();
+
+      if (!isEmbed) {
+        document.getElementById('lang-zh').addEventListener('click', function() { setLocale('zh'); });
+        document.getElementById('lang-en').addEventListener('click', function() { setLocale('en'); });
+        var integrationBtn = document.getElementById('integration-doc-link');
+        if (integrationBtn) integrationBtn.addEventListener('click', openIntegrationModal);
+        var modalClose = document.getElementById('integration-modal-close');
+        if (modalClose) modalClose.addEventListener('click', closeIntegrationModal);
+        var modalOverlay = document.getElementById('integration-modal');
+        if (modalOverlay) modalOverlay.addEventListener('click', function(e) { if (e.target === modalOverlay) closeIntegrationModal(); });
+      }
+
+      window.ThinkerPet = {
+        setCharacter: function(index) { applyState(index, null, null); },
+        setAction: function(actionIndexOrId) { applyState(null, actionIndexOrId, null); },
+        setEvolved: function(evolved) { applyState(null, null, evolved); },
+        setLanguage: function(lang) { setLocale(lang === 'en' || lang === 'zh' ? lang : 'zh'); },
+        getState: function() {
+          return {
+            characterIndex: currentCharIndex,
+            character: CHARACTERS[currentCharIndex],
+            actionIndex: currentActionIndex,
+            actionId: getCurrentActionId(),
+            evolved: isEvolved,
+            language: locale
+          };
+        },
+        applyState: applyState,
+        getCharacters: function() { return CHARACTERS.slice(); },
+        getActions: function() { return FRAME_ORDER.map(function(k) { var a = ACTIONS[k]; return a ? { id: a.id, name: getActionDisplayName(k), index: FRAME_ORDER.indexOf(k) } : null; }).filter(Boolean); }
+      };
+
+      window.addEventListener('message', function(e) {
+        var d = e.data;
+        if (d && d.type === 'thinker-pet') {
+          if (d.method === 'setCharacter' && d.characterIndex != null) window.ThinkerPet.setCharacter(d.characterIndex);
+          else if (d.method === 'setAction' && d.action != null) window.ThinkerPet.setAction(d.action);
+          else if (d.method === 'setEvolved' && d.evolved !== undefined) window.ThinkerPet.setEvolved(d.evolved);
+          else if (d.method === 'setLanguage' && d.language != null) window.ThinkerPet.setLanguage(d.language);
+          else if (d.method === 'applyState') window.ThinkerPet.applyState(d.characterIndex, d.action, d.evolved);
+          else if (d.method === 'getAvatar' && typeof e.source !== 'undefined') {
+            var idx = d.characterIndex != null ? d.characterIndex : currentCharIndex;
+            var ev = d.evolved !== undefined ? !!d.evolved : isEvolved;
+            var url = getAvatarDataUrl(idx, ev);
+            if (url) e.source.postMessage({ type: 'thinker-pet-avatar', dataUrl: url, characterIndex: idx }, '*');
+          }
+        }
+      });
+
+      if (isEmbed) return;
+
+      document.getElementById('btn-evolve').addEventListener('click', function() {
+        if (isTransitioning) return;
+        isTransitioning = true;
+        transitionTargetEvolved = !isEvolved;
+        transitionFlashStep = 0;
+        transitionIntervalId = setInterval(function() {
+          transitionFlashStep++;
+          if (transitionFlashStep >= 6) {
+            clearInterval(transitionIntervalId);
+            transitionIntervalId = null;
+            isEvolved = transitionTargetEvolved;
+            isTransitioning = false;
+            transitionFlashStep = 0;
+            updateEvolveButton();
+            startViewerAnimation();
+          }
+        }, 150);
+      });
+
+      document.getElementById('btn-char-prev').addEventListener('click', function() {
+        currentCharIndex = (currentCharIndex - 1 + CHARACTERS.length) % CHARACTERS.length;
+        onCharChange();
+      });
+      document.getElementById('btn-char-next').addEventListener('click', function() {
+        currentCharIndex = (currentCharIndex + 1) % CHARACTERS.length;
+        onCharChange();
+      });
+    }
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', initGallery);
+    } else {
+      initGallery();
+    }
+  </script>
+</body>
+</html>
